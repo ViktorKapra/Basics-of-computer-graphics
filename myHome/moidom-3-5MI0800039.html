@@ -1,0 +1,275 @@
+﻿<!DOCTYPE html>
+
+
+<html>
+	<head>
+		<meta name="viewport" content="width=device-width, user-scalable=no, minimum-scale=1.0, maximum-scale=1.0">
+		<script src="three.min.js"></script>
+		<script src="OrbitControls.js"></script>
+	</head>
+	
+	<body>
+		<script>
+			const FN = '5MI0800039'; // факултетен номер 
+		</script>
+		
+		<script src="init.js"></script>
+		<script src="CSG.js"></script>
+			
+		<script>
+			function insertSpace(x,z,height,rot)
+			{
+				var geometry = new THREE.BoxGeometry(0.2, height,0.8);
+				material = new THREE.MeshPhongMaterial( {color:'white'} );
+
+				var space = new THREE.Mesh( geometry, material );
+				if(rot==="x") space.rotateY(Math.PI/2);
+				space.position.x= x;
+				space.position.z=z;
+				return space;
+			}
+
+			function insertSpaceInWall(wall,xd,zd,typeOfSpace,rot)
+			{
+				var csgHelper= new CSG();
+				var height = 2;
+				var lifting = 0;
+				if(typeOfSpace === "door")
+				{
+					height = 2;
+				}
+				else if(typeOfSpace == "window") {
+					height = 0.6;
+					lifting = 0.6;
+				}
+				var space=insertSpace(xd,zd, height,rot);
+				space.position.y += lifting;
+				csgHelper.subtract([wall,space]);
+				return csgHelper.toMesh();
+			}
+
+			function generateWall(sx,sz,ex,ez,rot)
+			{
+
+				var lenghtWall =  rot === "x" ? Math.abs((ex-sx)): Math.abs((ez-sz));
+				var geometry = new THREE.BoxGeometry( 0.2, 2.5,lenghtWall );
+				material = new THREE.MeshPhongMaterial( {color:'crimson', shininess: 100} );
+
+				var cube = new THREE.Mesh( geometry, material );
+				cube.position.set( (sx+ex)/2, 0,(ez+sz)/2 );
+				if(rot==="x") cube.rotateY(Math.PI/2);
+				cube.receiveShadow = true;
+				cube.castShadow = true;
+				return cube;
+			}
+			function generateTable(x,z,heightOfLegs,rot)
+			{
+
+				var plotGeometry = new THREE.CylinderGeometry( 1,1,0.01,32,2);
+
+				const texture = new THREE.TextureLoader().load( 'textures/wood2.jpg' );
+				var material = new THREE.MeshBasicMaterial( { map: texture } );
+				var plot = new THREE.Mesh( plotGeometry, material );
+				plot.position.y+=heightOfLegs;
+				var legGeometry= new THREE.CylinderGeometry(0.06,0.06,heightOfLegs,32,4);
+				var radiusRatio= 3/4;
+				var leg1=new THREE.Mesh(legGeometry,new THREE.MeshPhongMaterial( {color:0xc0c0c0, shininess: 30} ));
+				leg1.position.x= radiusRatio* Math.cos(Math.PI/4);
+				leg1.position.z= radiusRatio* Math.sin(Math.PI/4);
+				leg1.position.y += heightOfLegs/2;
+				var leg2= leg1.clone();
+				leg2.position.x= radiusRatio* Math.cos(Math.PI/4 * 3);
+				leg2.position.z= radiusRatio* Math.sin(Math.PI/4 * 3);
+
+				var leg3= leg1.clone();
+				leg3.position.x= radiusRatio* Math.cos(Math.PI/4 * 5);
+				leg3.position.z= radiusRatio* Math.sin(Math.PI/4 * 5);
+
+				var leg4= leg1.clone();
+				leg4.position.x= radiusRatio* Math.cos(Math.PI/4 * 7);
+				leg4.position.z= radiusRatio* Math.sin(Math.PI/4 * 7);
+
+				var table=  new THREE.Group();;
+				table.add(plot);
+				table.add(leg1);
+				table.add(leg2);
+				table.add(leg3);
+				table.add(leg4);
+				table.position.x= x;
+				table.position.z = z;
+				return table;
+			}
+
+			function createDoghouse(x,z,rot,i)
+			{
+				// roof of the doghouse
+				var shape = new THREE.Shape();
+				shape.moveTo(  0.3,  0.4 );
+				shape.lineTo(  -0.3, 0.4 );
+				shape.lineTo( 0, 0.7 );
+				shape.lineTo(  0.3,  0.4 );
+				var extrudeSettings = { depth: 0.8, bevelEnabled: true, bevelSegments: 1, steps: 1, bevelSize: -0.01, bevelThickness: 0.01 };
+				var geometry = new THREE.ExtrudeGeometry( shape, extrudeSettings );
+				var Rooftexture = new THREE.TextureLoader().load( 'textures/roof3.jpg' );
+				var roofMaterial = new THREE.MeshBasicMaterial( { map: Rooftexture } );
+
+				var roof = new THREE.Mesh( geometry, roofMaterial );
+				roof.position.x= 0 ;
+				roof.position.z= - 0.4;
+				//body of doghouse
+
+				var geometry = new THREE.BoxGeometry( 0.5, 0.4,0.8 );
+				var bodyTexture = new THREE.TextureLoader().load( 'textures/body'+ i +'.jpg' );
+				var bodyMaterial = new THREE.MeshBasicMaterial( {map:bodyTexture} );
+				var cube = new THREE.Mesh( geometry, bodyMaterial );
+				cube.position.y += 0.2;
+
+
+				var enter= new THREE.Mesh(new THREE.BoxGeometry(0.2,0.4,1.2),material);
+				enter.position.z= 0.4;
+				enter.position.y=0.1;
+				var csgHelper= new CSG();
+				csgHelper.subtract([cube, enter]);
+				cube = csgHelper.toMesh();
+				//var carpetGeom= new THREE.CylinderGeometry(0.3,0.3,0.1,16,0.01);//,0,Math.PI);
+//	var carpet= new THREE.Mesh(carpetGeom, new THREE.MeshPhongMaterial());
+//	carpet.position.z=0.4;
+//	carpet.position.y = -0.001;
+				var hut = new THREE.Group();
+				hut.add(cube);
+				hut.add(roof);
+//	hut.add(carpet);
+				if(rot === "x")
+				{
+					hut.rotation.y +=Math.PI/2;
+				}
+				hut.position.x=x;
+				hut.position.z=z;
+				//return hut;
+				return hut;
+				//scene.add(roof);
+			}
+
+			function generateIcecream(x,y,z,icecreamType)
+			{
+				var domeGeom= new THREE.SphereGeometry(0.19, 32, 32, 0);
+				var bodyTexture = new THREE.TextureLoader().load( 'textures/porcelain.webp' );
+				var bodyMaterial = new THREE.MeshBasicMaterial( {map:bodyTexture} );
+				var dome= new THREE.Mesh(domeGeom, bodyMaterial);
+				dome.position.y+= 0.3;
+				dome.scale.set(1,1.5,1);
+				var dome2geom=  new THREE.SphereGeometry(0.2, 32, 32, 0);
+				var dome2= new THREE.Mesh(dome2geom, bodyMaterial);
+				dome2.position.y+=0.2;
+
+				var csgHelper= new CSG();
+				csgHelper.subtract([dome2,dome]);
+				dome = csgHelper.toMesh(bodyMaterial);
+				dome.scale.set(0.5,0.5,0.5);
+				dome.position.y =0.01;
+				var holderGeom= new THREE.CylinderGeometry(0.07,0.1,0.01,32);
+				var holder= new THREE.Mesh(holderGeom, bodyMaterial);
+				holder.position.y+=0.005;
+
+				var cup = new THREE.Group();
+				cup.add(holder);
+				cup.add(dome);
+				var icecreamTexture = new THREE.TextureLoader().load( 'textures/'+ icecreamType +'_icecream.jpg' );
+				var icecreamMaterial = new THREE.MeshBasicMaterial( {map:icecreamTexture} );
+				var mults= [[1,1], [1,-1], [-1,-1], [-1,1]];
+				var iceGeom= new THREE.SphereGeometry(0.04,8,8);
+
+				var iceCream= new THREE.Mesh(iceGeom,
+						icecreamMaterial);
+				iceCream.position.y= 0.14;
+				cup.add(iceCream);
+
+
+				for(var i= 0; i<4 ; i++ )
+				{
+					var iceClone = iceCream.clone();
+					iceClone.position.y=0.1;
+					iceClone.position.x= 0.04* mults[i][0];
+					iceClone.position.z= 0.04* mults[i][1];
+					cup.add(iceClone);
+				}
+
+				cup.position.set(x,y,z);
+				return cup;
+
+
+
+			}
+
+
+			// 1. преименувайте файла на moidom-g-fn.html
+			//    g=номер на група, а fn=факултетен номер
+			//
+			// 2. сменете стойността на константата FN да
+			//    е факултетния номер, за да се генерират
+			//    сцената, земята и контурът на къщата ви
+			//
+			// 3. едва тогава почвайте да строите стените
+			//    и да добавяте исканите обекти по стаите
+			//
+			// 4. в init.js се прави глобален обект scene
+			//    и в него трябва да сложите обектите си!
+			//
+			// 5. кубът по-долу е само за пример как може
+			//    да се слагат обекти, които правят сянка
+			//Door
+
+			//scene.add(door);
+			var csgHelper= new CSG();
+
+			// outside walls
+			scene.add( generateWall(-1,-1,-1,-6,"z") );
+			scene.add(
+					insertSpaceInWall(
+							insertSpaceInWall( generateWall(5,4,5,-6,"z"), 5, 1.5, "window","z"),
+							5, -4,"window","z")
+			);
+			scene.add( insertSpaceInWall(generateWall(3,5,-7,5,"x"),-5, 5, "window", "x" ));
+			scene.add(generateWall(3,5.1,3,4,"z"));
+			//income wall
+			scene.add(insertSpaceInWall(generateWall(2.9,4,5.1,4,"x"),4,4,"door","x"));
+			scene.add(generateWall(-7,5.1,-7,-1,"z"));
+			scene.add(insertSpaceInWall(generateWall(-7.1,-1,-0.9,-1,"x"),-5,-1,"window","x"));
+			scene.add(generateWall(-1.1,-6,5.1,-6,"x"));
+
+			//inside walls
+
+			var doorWithTwoDoors=generateWall(-1,-1,-1,5,"z");
+			csgHelper= new CSG();
+			csgHelper.subtract([doorWithTwoDoors,insertSpace(-1,4,2),insertSpace(-1,0,2)]);
+			scene.add(csgHelper.toMesh());
+			scene.add(insertSpaceInWall(generateWall(-7,2,-1,2,"x"),-5,2,"door","x"));
+			scene.add(insertSpaceInWall(generateWall(-1,-1,5,-1,"x"),2,-1,"door","x"));
+
+			scene.add( generateWall(-1,-3.4949,0.685,-3.4949,"x") );
+			scene.add( generateWall(2.06,-6,2.06,-4.87,"z") );
+			var nonParallel=generateWall(0.9,-4,3,-4,"x");
+			nonParallel.rotation.y+=Math.PI/4;
+			nonParallel.position.x=1.35;
+			nonParallel.position.z=-4.205;
+			var nonParalelDoor=insertSpace(1.35,-4.205,2);
+			nonParalelDoor.rotateY(-Math.PI/4);
+			csgHelper=new CSG();
+			csgHelper.subtract([nonParallel,nonParalelDoor]);
+			scene.add(csgHelper.toMesh());
+			// adding special elements
+			scene.add(generateTable(2,2,0.5,"x"));
+			scene.add(createDoghouse(-6.2,0,"x",6));
+			scene.add(createDoghouse(-6.2,3.5,"x",7));
+			scene.add(generateIcecream(2,0.5,2,"italian"));
+			scene.add(generateIcecream(2.5,0.5,2,"brown"));
+			scene.add(generateIcecream(2,0.5,2.5,"purple"));
+			scene.add(generateIcecream(1.5,0.5,2,"pink"));
+			scene.add(generateIcecream(2,0.5,1.5,"purple"));
+			//scene.add(generateIcecream(0,0,0));
+		</script>
+		
+	</body>
+</html>
+
+
